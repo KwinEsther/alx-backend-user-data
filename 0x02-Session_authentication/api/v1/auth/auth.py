@@ -3,6 +3,7 @@
 """
 from flask import request
 # from models.user import User
+import os
 from typing import List, TypeVar
 # from typing import Optional, Type
 
@@ -82,27 +83,29 @@ class Auth:
         # If the path is not in excluded paths, it requires authentication
         # return True
 
-        if excluded_paths and path:
-            if path[-1] == '/':
-                new_path = path[:-1]
-            else:
-                new_path = path
-            new_excluded_path = []
-            for element in excluded_paths:
-                if element[-1] == '/':
-                    new_excluded_path.append(element[:-1])
-                if element[-1] == '*':
-                    if new_path.startswith(element[:-1]):
-                        return False
-
-            if new_path not in new_excluded_path:
-                return True
-            else:
-                return False
         if path is None:
             return True
-        if not excluded_paths:
-            return True
+
+        # Ensure path ends with '/' for consistency
+        if not path.endswith('/'):
+            path += '/'
+
+        # Normalize excluded paths to ensure they end with '/'
+        excluded_paths = [
+            p if p.endswith('/') else p + '/' for p in excluded_paths
+        ]
+
+        # Check if the path matches any excluded path
+        if path in excluded_paths:
+            return False
+
+        # Handle wildcard paths (e.g., /api/v1/stat*)
+        for excluded_path in excluded_paths:
+            if excluded_path.endswith('*'):
+                if path.startswith(excluded_path[:-1]):
+                    return False
+
+        return True
 
     # def authorization_header(self, request:
     #                         Optional[str] = None) -> Optional[str]:
@@ -139,3 +142,32 @@ class Auth:
             Optional[Type['User']]: None, as this is a template method.
         """
         return None
+
+    def session_cookie(self, request=None):
+        """
+        Retrieves the session cookie from the request.
+
+        Args:
+            request: The Flask request object.
+
+        Returns:
+            str: None, as this is a template method.
+        """
+        # Return None if the request is None
+        if request is None:
+            return None
+
+        # Get the session cookie name from the
+        # environment variable SESSION_NAME
+        session_name = os.getenv('SESSION_NAME')
+
+        if session_name is None:
+            return None
+
+        session_cookie = request.cookies.get(session_name)
+
+        if session_cookie is None:
+            return None
+
+        # Return the cookie value associated with the session_name
+        return session_cookie
